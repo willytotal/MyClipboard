@@ -1,22 +1,32 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace MyNewClipboard
 {
     static class Program
     {
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
-        [STAThread]
+		private static Mutex _singleInstanceMutex;
+
+		/// <summary>
+		/// The main entry point for the application.
+		/// </summary>
+		[STAThread]
         static void Main()
         {
-            Application.EnableVisualStyles();
+			if (Mutex.TryOpenExisting("MyClipboard", out _singleInstanceMutex))
+			{
+				MessageBox.Show("Only one instance can run");
+				Application.Exit();
+				return;
+			}
+
+			Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            try
+			_singleInstanceMutex = new Mutex(true, "MyClipboard");
+
+			try
             {
                 formSystemTray form = new formSystemTray();
                 Application.Run(form);
@@ -24,9 +34,7 @@ namespace MyNewClipboard
             catch
             {
             	
-            }
-            
-            
+            }                       
         }
     }
 }

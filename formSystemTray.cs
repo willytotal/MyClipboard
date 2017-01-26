@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Security.AccessControl;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using MyNewClipboard.Properties;
 
@@ -17,10 +21,11 @@ namespace MyNewClipboard
         private Win32Clipboard _clipboard;
         private KeyboardHook hook = new KeyboardHook();
         private List<SaveItem> _saveItems = new List<SaveItem>();
+	    private bool _isError;
 
         public formSystemTray()
         {
-            InitializeComponent();
+			InitializeComponent();
 
             this.ControlBox = false;
             this.Visible = false;
@@ -41,19 +46,41 @@ namespace MyNewClipboard
 
         private void formSystemTray_Load(object sender, EventArgs e)
         {
-            SetSize();
-            LoadData();
-            DrawClipboard();            
+	        try
+	        {
+				SetSize();
+		        LoadData();
+		        DrawClipboard();
+			}
+	        catch (ConfigurationErrorsException)
+	        {
+				var dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+				var appName = Path.GetFileNameWithoutExtension(AppDomain.CurrentDomain.FriendlyName);
+
+		        dir = Path.Combine(dir, appName);
+
+#if !DEBUG
+				var result = MessageBox.Show($"There appears to be a issue with the configuration file ({dir}).{Environment.NewLine}Press YES to delete the file.", "Config Error", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+		        if (result != DialogResult.Yes)
+			        return;
+
+				Directory.Delete(dir, true);
+# else
+				MessageBox.Show($"There appears to be a issue with the configuration file ({dir}).{Environment.NewLine}Please Delete it.", "Config Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+#endif
+
+		        _isError = true;
+				Application.Exit();
+	        }
         }
 
-        private void formtest_FormClosing(object sender, FormClosingEventArgs e)
-        {
-//            e.Cancel = true;
+	    private void formtest_FormClosing(object sender, FormClosingEventArgs e)
+	    {
+		    if (!_isError)
+			    SaveData();
+	    }
 
-            SaveData();
-        }
-
-        private void DisplayWindow(bool bShow)
+	    private void DisplayWindow(bool bShow)
         {
             if( bShow )
             {
@@ -370,10 +397,20 @@ namespace MyNewClipboard
 
         private void SetSize()
         {
-            int nHeight = (Convert.ToInt32(Settings.Default.DisplayCount) * listBoxClipboard.ItemHeight) + 4;
-            this.Size = new Size(this.Size.Width, nHeight);
-            Size screen = new Size(Screen.PrimaryScreen.WorkingArea.Width - 10, Screen.PrimaryScreen.WorkingArea.Height - 5);
-            this.Location = new Point(Size.Subtract(screen, this.Size));
+	        try
+	        {
+				int nHeight = (Convert.ToInt32(Settings.Default.DisplayCount) * listBoxClipboard.ItemHeight) + 4;
+				this.Size = new Size(this.Size.Width, nHeight);
+				Size screen = new Size(Screen.PrimaryScreen.WorkingArea.Width - 10, Screen.PrimaryScreen.WorkingArea.Height - 5);
+				this.Location = new Point(Size.Subtract(screen, this.Size));
+
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.Message);
+		        throw;
+	        }
+
         }
 
         private void listBoxClipboard_MouseMove(object sender, MouseEventArgs e)
