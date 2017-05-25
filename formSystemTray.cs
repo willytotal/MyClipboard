@@ -81,7 +81,9 @@ namespace MyNewClipboard
 	    }
 
 	    private void DisplayWindow(bool bShow)
-        {
+	    {
+		    SetSize();
+
             if( bShow )
             {
                 if( listBoxClipboard.Items.Count > 0 )
